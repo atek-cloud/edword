@@ -1,0 +1,22 @@
+p2-editor {
+  --border-color: #ddd;
+
+  display: flex;
+}
+
+p2-editor .hidden {
+  display: none !important;
+}
+
+p2-editor .cm-container {
+  flex: 1;
+}
+
+p2-editor .cm-editor {
+  height: 100vh;
+}
+
+p2-editor .history {
+  flex: 0 0 300px;
+  border-left: 1px solid var(--border-color);
+}
