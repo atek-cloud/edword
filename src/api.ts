@@ -1,8 +1,8 @@
-import EventEmitter from 'events'
 import concat from 'concat-stream'
 import pump from 'pump'
 // @ts-ignore no types available yet -prf
 import Corestore from 'corestore'
+import lock from './lib/lock.js'
 import { Wiki } from './hyper/wiki.js'
 
 // exported api
@@ -120,13 +120,16 @@ export class P2WikiBackend {
   async putWikiDoc (wikiKey: string, docKey: string, docValue: string, seq: number|undefined) {
     const wiki = this._getWiki(wikiKey)
   
-    // TODO lock region
-
-    const current = await wiki.sub('docs').get(docKey)
-    if (current && (typeof seq === 'undefined' || current.seq > seq)) {
-      throw new ConflictError()
+    const release = await lock(`put:${wikiKey}:${docKey}`)
+    try {
+      const current = await wiki.sub('docs').get(docKey)
+      if (current && (typeof seq === 'undefined' || current.seq > seq)) {
+        throw new ConflictError()
+      }
+      await wiki.sub('docs').put(docKey, docValue)
+    } finally {
+      release()
     }
-    await wiki.sub('docs').put(docKey, docValue)
   }
   
   async delWikiDoc (wikiKey: string, docKey: string) {

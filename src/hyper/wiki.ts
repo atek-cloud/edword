@@ -12,6 +12,7 @@ import Hyperbee from 'hyperbee'
 import HyperbeeMessages from 'hyperbee/lib/messages.js'
 import pump from 'pump'
 import through from 'through2'
+import lock from '../lib/lock.js'
 
 export interface WikiMeta {
   schema: string
@@ -154,18 +155,22 @@ export class Wiki {
 
   async loadFromMeta () {
     const meta = (await this.get('_meta'))?.value || {schema: 'p2wiki', writerKeys: []}
-    // console.log('loadFromMeta()', meta)
-    // TODO lock region
-    this.meta = meta
-    for (const key of meta.writerKeys) {
-      if (!this.writers.find(w => w.publicKey.toString('hex') === key)) {
-        await this.addWriter(key)
+    
+    const release = await lock(`loadFromMeta:${this.key.toString('hex')}`)
+    try {
+      this.meta = meta
+      for (const key of meta.writerKeys) {
+        if (!this.writers.find(w => w.publicKey.toString('hex') === key)) {
+          await this.addWriter(key)
+        }
       }
-    }
-    for (const w of this.writers) {
-      if (!meta.writerKeys.includes(w.publicKey.toString('hex'))) {
-        await this.removeWriter(w.publicKey)
+      for (const w of this.writers) {
+        if (!meta.writerKeys.includes(w.publicKey.toString('hex'))) {
+          await this.removeWriter(w.publicKey)
+        }
       }
+    } finally {
+      release()
     }
   }
 
