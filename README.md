@@ -2,6 +2,8 @@
 
 A peer-to-peer text editor built on [Hypercore's new multiwriter Autobase](https://github.com/hypercore-protocol/autobase).
 
+![screenshot.png](screenshot.png)
+
 ## Implementation notes
 
 ### Hypercore schemas
@@ -29,6 +31,12 @@ The Hyperbee index uses the following layout:
   writer: Buffer, // key of the core that authored the commit
   parents: string[] // IDs of commits which preceded this commit
   message: string // a description of the commit
+  timestamp: DateTime // local clock time of commit
+  diff: {
+    add: [[path: string, hash: string], ...],
+    change: [[path: string, hash: string], ...],
+    del: [path: string, ...]
+  ]
 }
 /blobs/{hash} = {
   writer: Buffer
@@ -44,19 +52,11 @@ Commit {
   id: string, // random generated ID
   parents: string[] // IDs of commits which preceded this commit
   message: string // a description of the commit
+  timestamp: DateTime // local clock time of commit
   diff: {
-    add: [
-      // path        blob-ref (hash)
-      ['/foo.txt', 'sha256-123ad..df'],
-    ],
-    change: [
-      // path        blob-ref (hash)
-      ['/bar.txt', 'sha256-dkc22..12']
-    ],
-    delete: [
-      // path
-      ['/baz.txt']
-    ]
+    add: [[path: string, hash: string], ...],
+    change: [[path: string, hash: string], ...],
+    del: [path: string, ...]
   ]
 }
 BlobChunk {
