@@ -14,14 +14,14 @@ import pump from 'pump'
 import through from 'through2'
 import lock from '../lib/lock.js'
 
-export interface WikiMeta {
+export interface RepoMeta {
   schema: string
   writerKeys: string[]
 }
 
-export interface WikiOpts {
-  writers?: WikiWriter[]
-  index: WikiIndex
+export interface RepoOpts {
+  writers?: RepoWriter[]
+  index: RepoIndex
 }
 
 export interface WriteOpts {
@@ -29,7 +29,7 @@ export interface WriteOpts {
   prefix?: string
 }
 
-export class BaseWikiCore {
+export class BaseRepoCore {
   core: Hypercore
   constructor (public store: Corestore, public publicKey: Buffer, public secretKey?: Buffer) {
     this.core = store.get({publicKey, secretKey})
@@ -54,14 +54,14 @@ export class BaseWikiCore {
   }
 }
 
-export class WikiWriter extends BaseWikiCore {
+export class RepoWriter extends BaseRepoCore {
   static createNew (store: Corestore) {
     const keyPair = crypto.keyPair()
-    return new WikiWriter(store, keyPair.publicKey, keyPair.secretKey)
+    return new RepoWriter(store, keyPair.publicKey, keyPair.secretKey)
   }
 
   static load (store: Corestore, publicKey: string, secretKey?: string) {
-    return new WikiWriter(
+    return new RepoWriter(
       store,
       Buffer.from(publicKey, 'hex'),
       secretKey ? Buffer.from(secretKey, 'hex') : undefined
@@ -69,14 +69,14 @@ export class WikiWriter extends BaseWikiCore {
   }
 }
 
-export class WikiIndex extends BaseWikiCore {
+export class RepoIndex extends BaseRepoCore {
   static createNew (store: Corestore) {
     const keyPair = crypto.keyPair()
-    return new WikiIndex(store, keyPair.publicKey, keyPair.secretKey)
+    return new RepoIndex(store, keyPair.publicKey, keyPair.secretKey)
   }
 
   static load (store: Corestore, publicKey: string, secretKey?: string) {
-    return new WikiIndex(
+    return new RepoIndex(
       store,
       Buffer.from(publicKey, 'hex'),
       secretKey ? Buffer.from(secretKey, 'hex') : undefined
@@ -84,13 +84,13 @@ export class WikiIndex extends BaseWikiCore {
   }
 }
 
-export class Wiki {
+export class Repo {
   autobase: Autobase
   indexBee: Hyperbee
-  meta: WikiMeta|undefined
-  writers: WikiWriter[]
-  index: WikiIndex
-  constructor (public store: Corestore, {writers, index}: WikiOpts) {
+  meta: RepoMeta|undefined
+  writers: RepoWriter[]
+  index: RepoIndex
+  constructor (public store: Corestore, {writers, index}: RepoOpts) {
     this.writers = writers || []
     this.index = index || undefined
     const inputs = this.writers.map(w => w.core)
@@ -109,24 +109,24 @@ export class Wiki {
   }
 
   static async createNew (store: Corestore) {
-    const wiki = new Wiki(store, {
-      writers: [WikiWriter.createNew(store)],
-      index: WikiIndex.createNew(store)
+    const repo = new Repo(store, {
+      writers: [RepoWriter.createNew(store)],
+      index: RepoIndex.createNew(store)
     })
-    await wiki.ready()
-    await wiki.persistMeta()
-    return wiki
+    await repo.ready()
+    await repo.persistMeta()
+    return repo
   }
 
   static async load (store: Corestore, publicKey: string) {
-    const wiki = new Wiki(store, {
+    const repo = new Repo(store, {
       writers: [],
-      index: WikiIndex.load(store, publicKey)
+      index: RepoIndex.load(store, publicKey)
     })
-    await wiki.ready()
-    await wiki.loadFromMeta()
-    await wiki.watchMeta()
-    return wiki
+    await repo.ready()
+    await repo.loadFromMeta()
+    await repo.watchMeta()
+    return repo
   }
 
   async ready () {
@@ -197,7 +197,7 @@ export class Wiki {
   }
 
   async createWriter () {
-    const writer = WikiWriter.createNew(this.store)
+    const writer = RepoWriter.createNew(this.store)
     await writer.core.ready()
     this.writers.push(writer)
     this.autobase.addInput(writer.core)
@@ -206,7 +206,7 @@ export class Wiki {
   }
 
   async addWriter (publicKey: string) {
-    const writer = WikiWriter.load(this.store, publicKey)
+    const writer = RepoWriter.load(this.store, publicKey)
     await writer.core.ready()
     this.writers.push(writer)
     this.autobase.addInput(writer.core)
@@ -326,16 +326,16 @@ export class Wiki {
   }
 }
 
-function getWriterCore (wiki: Wiki, opts?: WriteOpts) {
+function getWriterCore (repo: Repo, opts?: WriteOpts) {
   let writer
   if (opts?.writer) {
-    if (opts.writer instanceof WikiWriter) {
-      writer = wiki.writers.find(w => w === opts.writer)
+    if (opts.writer instanceof RepoWriter) {
+      writer = repo.writers.find(w => w === opts.writer)
     } else if (Buffer.isBuffer(opts.writer)) {
-      writer = wiki.writers.find(w => w.publicKey.equals(opts.writer)) 
+      writer = repo.writers.find(w => w.publicKey.equals(opts.writer)) 
     }
   } else {
-    writer = wiki.writers.find(w => w.core === wiki.autobase.defaultInput) || wiki.writers.find(w => w.writable)
+    writer = repo.writers.find(w => w.core === repo.autobase.defaultInput) || repo.writers.find(w => w.writable)
   }
   if (!writer) {
     throw new Error(`Not a writer: ${opts?.writer}`)

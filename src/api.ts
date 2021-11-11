@@ -3,92 +3,92 @@ import pump from 'pump'
 // @ts-ignore no types available yet -prf
 import Corestore from 'corestore'
 import lock from './lib/lock.js'
-import { Wiki } from './hyper/wiki.js'
+import { Repo } from './hyper/repo.js'
 
 // exported api
 // =
 
-export interface GetWikiDocOpts {
+export interface GetRepoFileOpts {
   seq?: number
 }
 
 let _idCounter = 1
-export class P2WikiBackend {
+export class Backend {
   _id = _idCounter++ // used for debugging
   store: Corestore
-  wikis: Wiki[] = []
+  repos: Repo[] = []
 
   constructor (corestoreOpts: any) {
     this.store = new Corestore(corestoreOpts)
   }
 
-  _getWiki (wikiKey: string): Wiki {
-    const wiki = this.wikis.find(w => w.key.toString('hex') === wikiKey)
-    if (!wiki) throw new NotFoundError()
-    return wiki
+  _getRepo (repoKey: string): Repo {
+    const repo = this.repos.find(w => w.key.toString('hex') === repoKey)
+    if (!repo) throw new NotFoundError()
+    return repo
   }
 
-  async createWiki () {
-    const wiki = await Wiki.createNew(this.store)
-    this.wikis.push(wiki)
-    return wiki.toJSON()
+  async createRepo () {
+    const repo = await Repo.createNew(this.store)
+    this.repos.push(repo)
+    return repo.toJSON()
   }
 
-  async addWiki (wikiKey: string) {
-    const wiki = await Wiki.load(this.store, wikiKey)
-    this.wikis.push(wiki)
-    return wiki.toJSON()
+  async addRepo (repoKey: string) {
+    const repo = await Repo.load(this.store, repoKey)
+    this.repos.push(repo)
+    return repo.toJSON()
   }
   
-  async listWikis () {
-    return await Promise.resolve(this.wikis.map(w => w.toJSON()))
+  async listRepos () {
+    return await Promise.resolve(this.repos.map(w => w.toJSON()))
   }
   
-  async getWiki (wikiKey: string) {
-    const wiki = this._getWiki(wikiKey)
-    return await Promise.resolve(wiki.toJSON())
+  async getRepo (repoKey: string) {
+    const repo = this._getRepo(repoKey)
+    return await Promise.resolve(repo.toJSON())
   }
   
-  async delWiki (wikiKey: string) {
-    const index = this.wikis.findIndex(w => w.key.toString('hex') === wikiKey)
-    if (index !== -1) this.wikis.splice(index, 1)
+  async delRepo (repoKey: string) {
+    const index = this.repos.findIndex(w => w.key.toString('hex') === repoKey)
+    if (index !== -1) this.repos.splice(index, 1)
     return await Promise.resolve(undefined)
   }
 
-  async createWikiWriter (wikiKey: string) {
-    const wiki = this._getWiki(wikiKey)
-    await wiki.createWriter()
-    return await Promise.resolve(wiki.toJSON())
+  async createRepoWriter (repoKey: string) {
+    const repo = this._getRepo(repoKey)
+    await repo.createWriter()
+    return await Promise.resolve(repo.toJSON())
   }
 
-  async addWikiWriter (wikiKey: string, writerKey: string) {
-    const wiki = this._getWiki(wikiKey)
-    await wiki.addWriter(writerKey)
-    return await Promise.resolve(wiki.toJSON())
+  async addRepoWriter (repoKey: string, writerKey: string) {
+    const repo = this._getRepo(repoKey)
+    await repo.addWriter(writerKey)
+    return await Promise.resolve(repo.toJSON())
   }
 
-  async removeWikiWriter (wikiKey: string, writerKey: string) {
-    const wiki = this._getWiki(wikiKey)
-    await wiki.removeWriter(writerKey)
-    return await Promise.resolve(wiki.toJSON())
+  async removeRepoWriter (repoKey: string, writerKey: string) {
+    const repo = this._getRepo(repoKey)
+    await repo.removeWriter(writerKey)
+    return await Promise.resolve(repo.toJSON())
   }
   
-  async listWikiDocs (wikiKey: string) {
-    const wiki = this._getWiki(wikiKey)  
+  async listRepoFiles (repoKey: string) {
+    const repo = this._getRepo(repoKey)  
     return await new Promise((resolve, reject) => {
       pump(
-        wiki.sub('docs').createReadStream(),
+        repo.sub('main').createReadStream(),
         concat(resolve),
         reject
       )
     })
   }
   
-  async searchWikiDocs (wikiKey: string, query: string) {
-    const wiki = this._getWiki(wikiKey)  
+  async searchRepoFiles (repoKey: string, query: string) {
+    const repo = this._getRepo(repoKey)  
     return await new Promise((resolve, reject) => {
       pump(
-        wiki.sub('docs').createReadStream(),
+        repo.sub('main').createReadStream(),
         concat((entries: any) => {
           // TODO filter by query
           resolve(entries)
@@ -98,43 +98,43 @@ export class P2WikiBackend {
     })
   }
   
-  async getWikiDoc (wikiKey: string, docKey: string, opts?: GetWikiDocOpts) {
-    const wiki = this._getWiki(wikiKey)
+  async getRepoFile (repoKey: string, fileKey: string, opts?: GetRepoFileOpts) {
+    const repo = this._getRepo(repoKey)
 
     // TODO: historic get
   
-    return (await wiki.sub('docs').get(docKey))
+    return (await repo.sub('main').get(fileKey))
   }
   
-  async listWikiDocHistory (wikiKey: string, docKey: string, opts?: any) {
-    const wiki = this._getWiki(wikiKey)
+  async listRepoFileHistory (repoKey: string, fileKey: string, opts?: any) {
+    const repo = this._getRepo(repoKey)
     return await new Promise((resolve, reject) => {
       pump(
-        wiki.sub('docs').createKeyedHistoryStream(docKey, opts),
+        repo.sub('main').createKeyedHistoryStream(fileKey, opts),
         concat(resolve),
         reject
       )
     })
   }
   
-  async putWikiDoc (wikiKey: string, docKey: string, docValue: string, seq: number|undefined) {
-    const wiki = this._getWiki(wikiKey)
+  async putRepoFile (repoKey: string, fileKey: string, fileValue: string, seq: number|undefined) {
+    const repo = this._getRepo(repoKey)
   
-    const release = await lock(`put:${wikiKey}:${docKey}`)
+    const release = await lock(`put:${repoKey}:${fileKey}`)
     try {
-      const current = await wiki.sub('docs').get(docKey)
+      const current = await repo.sub('main').get(fileKey)
       if (current && (typeof seq === 'undefined' || current.seq > seq)) {
         throw new ConflictError()
       }
-      await wiki.sub('docs').put(docKey, docValue)
+      await repo.sub('main').put(fileKey, fileValue)
     } finally {
       release()
     }
   }
   
-  async delWikiDoc (wikiKey: string, docKey: string) {
-    const wiki = this._getWiki(wikiKey)
-    await wiki.sub('docs').del(docKey)
+  async delRepoFile (repoKey: string, fileKey: string) {
+    const repo = this._getRepo(repoKey)
+    await repo.sub('main').del(fileKey)
   }
 }
 

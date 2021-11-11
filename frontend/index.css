@@ -1,22 +1,17 @@
-p2-editor {
-  --border-color: #ddd;
+body {
+  --background-dark: #21252b;
+  --background-default: #282c34;
+  --background-light: #484d58;
+  --color-dark: #7d8799;
+  --color-default: #abb2bf;
+  --color-active: #e06c75;
+  --border-default: #15171a;
+  --border-light: #7d8799;
 
-  display: flex;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";;
+  background: var(--background-default);
+  color: var(--color-default);
 }
 
-p2-editor .hidden {
-  display: none !important;
-}
-
-p2-editor .cm-container {
-  flex: 1;
-}
-
-p2-editor .cm-editor {
-  height: 100vh;
-}
-
-p2-editor .history {
-  flex: 0 0 300px;
-  border-left: 1px solid var(--border-color);
-}
+a { cursor: pointer; }

@@ -1,28 +1,63 @@
-# P2Wiki
+# Untitled File Editor Project
 
-A peer-to-peer wiki built on [Hypercore's new multiwriter Autobase](https://github.com/hypercore-protocol/autobase).
+A peer-to-peer text editor built on [Hypercore's new multiwriter Autobase](https://github.com/hypercore-protocol/autobase).
 
 ## Implementation notes
 
-### Bee schema
+### Hypercore schemas
 
-The Wiki is an Autobase which uses oplog inputs and a Hyperbee index. The generated Hyperbee uses the following layout:
+The repo is an Autobase which uses oplog inputs and a Hyperbee for the index index. All data is encoded using msgpack.
+
+The Hyperbee index uses the following layout:
 
 ```
-/_meta = {schema: 'p2wiki', writerKeys: [$writerPubKeys...]}
-/docs/$docKey = $docValue
+/_meta = {
+  schema: 'untitled-file-editor-project',
+  writerKeys: Buffer[]
+}
+/trees/$tree = {
+  commit: string, // id of the commit that created this tree
+  conflicts: number[], // seq numbers of currently-conflicting trees
+  files: [
+    // path        blob-ref (hash)
+    ['/foo.txt', 'sha256-123ad..df'],
+    ['/bar.txt', 'sha256-dkc22..12']
+  ]
+}
+/commits/$tree/$id = {
+  id: string, // random generated ID
+  writer: Buffer, // key of the core that authored the commit
+  parents: string[] // IDs of commits which preceded this commit
+  message: string // a description of the commit
+}
+/blobs/{hash} = {
+  writer: Buffer
+  start: number
+  end: number
+}
+```
+
+The oplogs include one of the following message types:
+
+```
+Commit {
+  id: string, // random generated ID
+  parents: string[] // IDs of commits which preceded this commit
+  message: string // a description of the commit
+  files: [
+    // path        blob-ref (hash)
+    ['/foo.txt', 'sha256-123ad..df'],
+    ['/bar.txt', 'sha256-dkc22..12']
+  ]
+}
+BlobChunk {
+  hash: string // hash to which this blob belongs
+  value: Buffer // content
+}
 ```
 
 ### Managing writers
 
-Only the creator of the Wiki maintains the Hyperbee index as a hypercore. The owner updates the `/_meta` entry to determine the current writers.
+Only the creator of the Repo maintains the Hyperbee index as a hypercore. The owner updates the `/_meta` entry to determine the current writers.
 
 This is a temporary design until Autoboot lands.
-
-### Multiwriter
-
-The Wiki does not track conflicts and defaults to last-writer wins. Users can consult the history of changes to a document to discover lost writes.
-
-Conflict-tracking can be added once a stable [Autobee](https://github.com/pfrazee/autobee/tree/oplog-optimized) has been developed.
-
-When writing a document from the frontend, the current seq of the document must be included and be `>=` the current value. If it is not, the write will be rejected and the frontend must accomplish a merge before attempting to write again.

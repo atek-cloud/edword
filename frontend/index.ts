@@ -1,123 +1,56 @@
-import { LitElement, html } from 'lit'
+import { LitElement, html, css } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { classMap } from 'lit/directives/class-map.js'
-import { EditorState, EditorView, basicSetup } from '@codemirror/basic-setup'
-import { ViewUpdate } from '@codemirror/view'
-import { Text } from '@codemirror/text'
-import { markdown } from '@codemirror/lang-markdown'
-import { showPanel } from '@codemirror/panel'
 
-interface Env {
-  showHistory: boolean
-}
+import './com/titlebar.js'
+import './com/nav.js'
+import './com/filelist.js'
+import './com/committer.js'
+import './com/tabs.js'
+import './com/editor.js'
 
-@customElement('p2-toolbar')
-class Toolbar extends LitElement {
-  @property() env: Env = {showHistory: false}
-
-  onEnvUpdate (env: Env) {
-    this.env = env
-  }
-
-  onCmUpdate (doc: Text) {
-    // TODO react to document
-  }
-
+@customElement('p2-app')
+class App extends LitElement {
   render () {
     return html`
-      toolbar
-      <button @click=${this.onToggleHistory}>${this.env.showHistory ? 'Hide History' : 'Show History'}</button>
-    `
-  }
-
-  onToggleHistory (e: Event) {
-    emit(this, 'toggle-history')
-  }
-}
-
-@customElement('p2-editor')
-class Editor extends LitElement {
-  @property() env: Env = {showHistory: false}
-  cm: EditorView|undefined = undefined
-
-  createRenderRoot () {
-    return this // no shadow dom
-  }
-
-  firstUpdated () {
-    const container = this.querySelector('.cm-container')
-    if (container) {
-      this.cm = new EditorView({
-        state: EditorState.create({
-          extensions: [
-            basicSetup,
-            markdown(),
-            showPanel.of(panel(Toolbar, true))
-          ]
-        }),
-        parent: container
-      })
-    }
-    this.env = {
-      showHistory: false
-    }
-  }
-
-  update (changedProperties: Map<string, any>) {
-    super.update(changedProperties)
-    if (changedProperties.has('env')) {
-      this.toolbar?.onEnvUpdate(this.env)
-    }
-  }
-
-  get toolbar (): Toolbar|null {
-    return this.querySelector('p2-toolbar')
-  }
-
-  render () {
-    return html`
-      <div
-        class="cm-container"
-        @toggle-history=${this.onToggleHistory}
-      ></div>
-      <div class=${classMap({history: true, hidden: !this.env.showHistory})}>
-        history todo
+      <div class="col1">
+        <p2-nav class="flex-1"></p2-nav>
+      </div>
+      <div class="col2">
+        <p2-filelist class="flex-1"></p2-filelist>
+        <p2-committer></p2-committer>
+      </div>
+      <div class="col3">
+        <p2-tabs></p2-tabs>
+        <p2-editor></p2-editor>
       </div>
     `
   }
 
-  onToggleHistory (e: Event) {
-    this.env = Object.assign({}, this.env, {
-      showHistory: !this.env.showHistory
-    })
-  }
-}
-
-function panel (Cons: any, top: boolean) {
-  return (view: EditorView) => {
-    const el = new Cons()
-    el.onCmUpdate(view.state.doc)
-    const dom = document.createElement('div')
-    dom.appendChild(el)
-    return {
-      top,
-      dom,
-      update (update: ViewUpdate) {
-        if (update.docChanged)
-          el.onCmUpdate(update.state.doc)
-      }
+  static styles = css`
+    :host {
+      display: flex;
     }
-  }
-}
 
-interface EmitOpts {
-  bubbles?: boolean
-  composed?: boolean
-  detail?: any
-}
+    .col1 {
+      flex: 0 0 40px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-default);
+    }
 
-function emit (el: Element, evt: string, opts: EmitOpts = {}) {
-  opts.bubbles = ('bubbles' in opts) ? opts.bubbles : true
-  opts.composed = ('composed' in opts) ? opts.composed : true
-  el.dispatchEvent(new CustomEvent(evt, opts))
+    .col2 {
+      flex: 0 0 200px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-default);
+    }
+
+    .col3 {
+      flex: 1;
+    }
+
+    .flex-1 {
+      flex: 1;
+    }
+  `
 }
