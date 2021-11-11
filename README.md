@@ -44,10 +44,19 @@ Commit {
   id: string, // random generated ID
   parents: string[] // IDs of commits which preceded this commit
   message: string // a description of the commit
-  files: [
-    // path        blob-ref (hash)
-    ['/foo.txt', 'sha256-123ad..df'],
-    ['/bar.txt', 'sha256-dkc22..12']
+  diff: {
+    add: [
+      // path        blob-ref (hash)
+      ['/foo.txt', 'sha256-123ad..df'],
+    ],
+    change: [
+      // path        blob-ref (hash)
+      ['/bar.txt', 'sha256-dkc22..12']
+    ],
+    delete: [
+      // path
+      ['/baz.txt']
+    ]
   ]
 }
 BlobChunk {
