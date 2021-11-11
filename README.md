@@ -19,7 +19,7 @@ The Hyperbee index uses the following layout:
 }
 /trees/$tree = {
   commit: string, // id of the commit that created this tree
-  conflicts: number[], // seq numbers of currently-conflicting trees
+  conflicts: string[], // ids currently-conflicting commits
   files: [
     // path        blob-ref (hash)
     ['/foo.txt', 'sha256-123ad..df'],
@@ -78,3 +78,7 @@ BlobChunk {
 Only the creator of the Repo maintains the Hyperbee index as a hypercore. The owner updates the `/_meta` entry to determine the current writers.
 
 This is a temporary design until Autoboot lands.
+
+### Detecting conflicts in commits
+
+All commit operations have a random ID and list the parent commits by their ID. When the indexer handles a commit, it compares the listed parents to the current tree's "head commits". If one of the head commits is not included in the list of parents, the tree is put in conflict state. Conflict state is tracked by a list of commit IDs in the tree entry.
