@@ -39,9 +39,10 @@ The Hyperbee index uses the following layout:
   ]
 }
 /blobs/{hash} = {
-  writer: Buffer
-  start: number
-  end: number
+  writer: Buffer // key of the input core which contains this blob
+  bytes: number // number of bytes in this blob
+  start: number // starting seq number
+  end: number // ending seq number
 }
 ```
 
@@ -49,6 +50,7 @@ The oplogs include one of the following message types:
 
 ```
 Commit {
+  op: 1
   id: string, // random generated ID
   parents: string[] // IDs of commits which preceded this commit
   message: string // a description of the commit
@@ -59,8 +61,14 @@ Commit {
     del: [path: string, ...]
   ]
 }
+Blob {
+  op: 2
+  hash: string // hash of this blob
+  bytes: number // number of bytes in this blob
+  length: number // number of chunks in this blob (which will follow this op)
+}
 BlobChunk {
-  hash: string // hash to which this blob belongs
+  op: 3
   value: Buffer // content
 }
 ```
